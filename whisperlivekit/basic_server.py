@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import uuid
 from contextlib import asynccontextmanager
 from typing import List, Optional
 
@@ -8,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
 from whisperlivekit import AudioProcessor, TranscriptionEngine, get_inline_ui_html, parse_args
+from whisperlivekit.meeting_manager import MeetingManager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logging.getLogger().setLevel(logging.WARNING)
@@ -17,6 +19,7 @@ logging.getLogger("whisperlivekit.qwen3_asr").setLevel(logging.DEBUG)
 
 config = parse_args()
 transcription_engine = None
+meeting_manager = MeetingManager()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -67,6 +70,18 @@ async def handle_websocket_results(websocket, results_generator, diff_tracker=No
         logger.exception(f"Error in WebSocket results handler: {e}")
 
 
+async def handle_meeting_results(websocket: WebSocket, meeting_id: str, participant_id: str, results_generator):
+    """Consumes results for a single participant and broadcasts merged meeting updates."""
+    try:
+        async for response in results_generator:
+            await meeting_manager.update_participant(meeting_id, participant_id, response.to_dict())
+        await websocket.send_json({"type": "ready_to_stop"})
+    except WebSocketDisconnect:
+        logger.info("Meeting websocket disconnected while handling results.")
+    except Exception as e:
+        logger.exception(f"Error in meeting websocket results handler: {e}")
+
+
 @app.websocket("/asr")
 async def websocket_endpoint(websocket: WebSocket):
     global transcription_engine
@@ -74,6 +89,12 @@ async def websocket_endpoint(websocket: WebSocket):
     # Read per-session options from query parameters
     session_language = websocket.query_params.get("language", None)
     mode = websocket.query_params.get("mode", "full")
+    meeting_id = websocket.query_params.get("meeting_id", "").strip()
+    participant_name = websocket.query_params.get("participant_name", "").strip()
+    participant_role = websocket.query_params.get("participant_role", "").strip()
+    participant_company = websocket.query_params.get("participant_company", "").strip()
+    participant_id = websocket.query_params.get("participant_id", "").strip() or str(uuid.uuid4())
+    is_meeting_mode = bool(meeting_id and participant_name)
 
     audio_processor = AudioProcessor(
         transcription_engine=transcription_engine,
@@ -92,11 +113,25 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         await websocket.send_json({"type": "config", "useAudioWorklet": bool(config.pcm_input), "mode": mode})
+        if is_meeting_mode:
+            await meeting_manager.register(
+                meeting_id=meeting_id,
+                websocket=websocket,
+                participant_id=participant_id,
+                name=participant_name,
+                role=participant_role,
+                company=participant_company,
+            )
     except Exception as e:
         logger.warning(f"Failed to send config to client: {e}")
 
     results_generator = await audio_processor.create_tasks()
-    websocket_task = asyncio.create_task(handle_websocket_results(websocket, results_generator, diff_tracker))
+    if is_meeting_mode:
+        websocket_task = asyncio.create_task(
+            handle_meeting_results(websocket, meeting_id, participant_id, results_generator)
+        )
+    else:
+        websocket_task = asyncio.create_task(handle_websocket_results(websocket, results_generator, diff_tracker))
 
     try:
         while True:
@@ -123,6 +158,8 @@ async def websocket_endpoint(websocket: WebSocket):
             logger.warning(f"Exception while awaiting websocket_task completion: {e}")
 
         await audio_processor.cleanup()
+        if is_meeting_mode:
+            await meeting_manager.unregister(meeting_id, websocket)
         logger.info("WebSocket endpoint cleaned up successfully.")
 
 

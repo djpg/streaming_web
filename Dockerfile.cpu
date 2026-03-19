@@ -39,7 +39,8 @@ RUN set -eux; \
   for extra in $(echo "${EXTRAS:-}" | tr ',' ' '); do \
   set -- "$@" --extra "$extra"; \
   done; \
-  uv sync --frozen --no-editable --no-cache "$@"
+  uv sync --frozen --no-editable --no-cache "$@" && \
+  uv pip install --python /app/.venv/bin/python python-multipart
 
 # --- MARK: Runtime Stage 
 FROM debian:bookworm-slim

@@ -10,6 +10,7 @@ WORKDIR /app
 RUN apt-get update && \
   apt-get install -y --no-install-recommends \
   build-essential \
+  ca-certificates \
   python3-dev && \
   rm -rf /var/lib/apt/lists/*
 
@@ -51,6 +52,7 @@ WORKDIR /app
 
 RUN apt-get update && \
   apt-get install -y --no-install-recommends \
+  ca-certificates \
   ffmpeg &&\
   rm -rf /var/lib/apt/lists/*
 
@@ -67,6 +69,8 @@ EXPOSE 8000
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV UV_PYTHON_DOWNLOADS=0
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/')" || exit 1

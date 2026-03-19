@@ -30,6 +30,26 @@
             </div>
 
             <div class="settings">
+                <div class="field participant-field">
+                    <label for="meetingIdInput">Meeting ID</label>
+                    <input id="meetingIdInput" type="text" placeholder="reunion-demo" />
+                </div>
+
+                <div class="field participant-field">
+                    <label for="participantNameInput">Name</label>
+                    <input id="participantNameInput" type="text" placeholder="Antonio" />
+                </div>
+
+                <div class="field participant-field">
+                    <label for="participantRoleInput">Rol</label>
+                    <input id="participantRoleInput" type="text" placeholder="Sales Manager" />
+                </div>
+
+                <div class="field participant-field">
+                    <label for="participantCompanyInput">Company</label>
+                    <input id="participantCompanyInput" type="text" placeholder="Acme" />
+                </div>
+
                 <div class="field">
                     <label for="websocketInput">Websocket URL</label>
                     <input id="websocketInput" type="text" placeholder="ws://host:port/asr" />
@@ -70,6 +90,16 @@
     </div>
 
     <div class="transcript-container">
+        <div class="meeting-panel">
+            <div class="meeting-panel-card">
+                <div class="meeting-panel-title">Participantes</div>
+                <div id="participantsRoster" class="participants-roster"></div>
+            </div>
+            <div class="meeting-panel-card">
+                <div class="meeting-panel-title">En directo</div>
+                <div id="activeBuffers" class="active-buffers"></div>
+            </div>
+        </div>
         <div id="linesTranscript"></div>
     </div>
 

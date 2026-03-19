@@ -214,6 +214,10 @@ body {
   gap: 12px;
 }
 
+.participant-field {
+  min-width: 180px;
+}
+
 .settings-toggle {
   width: 40px;
   height: 40px;
@@ -283,6 +287,10 @@ body {
 
 #chunkSelector,
 #websocketInput,
+#meetingIdInput,
+#participantNameInput,
+#participantRoleInput,
+#participantCompanyInput,
 #themeSelector,
 #microphoneSelect {
   font-size: 16px;
@@ -302,6 +310,10 @@ body {
 
 #chunkSelector:focus,
 #websocketInput:focus,
+#meetingIdInput:focus,
+#participantNameInput:focus,
+#participantRoleInput:focus,
+#participantCompanyInput:focus,
 #themeSelector:focus,
 #microphoneSelect:focus {
   outline: none;
@@ -388,10 +400,101 @@ label {
   padding: 20px;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .transcript-container::-webkit-scrollbar {
   display: none;
+}
+
+.meeting-panel {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 700px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.meeting-panel-card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px;
+  text-align: left;
+  background: var(--button-bg);
+}
+
+.meeting-panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.participants-roster,
+.active-buffers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.participant-card,
+.live-buffer-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--chip-bg);
+}
+
+.participant-card-header,
+.live-buffer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.participant-name,
+.live-buffer-name,
+.speaker-name {
+  font-weight: 700;
+}
+
+.participant-meta,
+.live-buffer-meta,
+.speaker-meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.participant-status {
+  font-size: 12px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(72, 187, 120, 0.15);
+  color: #2f855a;
+}
+
+.participant-status.offline {
+  background: rgba(160, 174, 192, 0.15);
+  color: var(--muted);
+}
+
+.live-buffer-text {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.speaker-identity {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 /* Transcript area */
@@ -598,6 +701,12 @@ label {
   
   .transcript-container {
     padding: 10px;
+  }
+}
+
+@media (max-width: 720px) {
+  .meeting-panel {
+    grid-template-columns: 1fr;
   }
 }
 

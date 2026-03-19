@@ -45,9 +45,21 @@ const linesTranscriptDiv = document.getElementById("linesTranscript");
 const timerElement = document.querySelector(".timer");
 const themeRadios = document.querySelectorAll('input[name="theme"]');
 const microphoneSelect = document.getElementById("microphoneSelect");
+const meetingIdInput = document.getElementById("meetingIdInput");
+const participantNameInput = document.getElementById("participantNameInput");
+const participantRoleInput = document.getElementById("participantRoleInput");
+const participantCompanyInput = document.getElementById("participantCompanyInput");
+const participantsRoster = document.getElementById("participantsRoster");
+const activeBuffersDiv = document.getElementById("activeBuffers");
 
 const settingsToggle = document.getElementById("settingsToggle");
 const settingsDiv = document.querySelector(".settings");
+const participantFields = [
+  ["meetingId", meetingIdInput],
+  ["participantName", participantNameInput],
+  ["participantRole", participantRoleInput],
+  ["participantCompany", participantCompanyInput],
+];
 
 // if (isExtension) {
 //   chrome.runtime.onInstalled.addListener((details) => {
@@ -212,10 +224,56 @@ websocketInput.addEventListener("change", () => {
   statusText.textContent = "WebSocket URL updated. Ready to connect.";
 });
 
+participantFields.forEach(([key, input]) => {
+  if (!input) return;
+  input.value = localStorage.getItem(key) || "";
+  input.addEventListener("change", () => {
+    localStorage.setItem(key, input.value.trim());
+  });
+});
+
+function getParticipantConfig() {
+  return {
+    meetingId: meetingIdInput.value.trim(),
+    participantName: participantNameInput.value.trim(),
+    participantRole: participantRoleInput.value.trim(),
+    participantCompany: participantCompanyInput.value.trim(),
+  };
+}
+
+function validateParticipantConfig() {
+  const { meetingId, participantName, participantRole, participantCompany } = getParticipantConfig();
+  if (!meetingId || !participantName || !participantRole || !participantCompany) {
+    statusText.textContent = "Completa Meeting ID, nombre, rol y empresa antes de grabar.";
+    settingsDiv.classList.add("visible");
+    settingsToggle.classList.add("active");
+    return false;
+  }
+  return true;
+}
+
+function buildWebSocketUrl() {
+  const url = new URL(websocketUrl);
+  const { meetingId, participantName, participantRole, participantCompany } = getParticipantConfig();
+
+  let participantId = localStorage.getItem("participantId");
+  if (!participantId) {
+    participantId = crypto.randomUUID();
+    localStorage.setItem("participantId", participantId);
+  }
+
+  url.searchParams.set("meeting_id", meetingId);
+  url.searchParams.set("participant_name", participantName);
+  url.searchParams.set("participant_role", participantRole);
+  url.searchParams.set("participant_company", participantCompany);
+  url.searchParams.set("participant_id", participantId);
+  return url.toString();
+}
+
 function setupWebSocket() {
   return new Promise((resolve, reject) => {
     try {
-      websocket = new WebSocket(websocketUrl);
+      websocket = new WebSocket(buildWebSocketUrl());
     } catch (error) {
       statusText.textContent = "Invalid WebSocket URL. Please check and try again.";
       reject(error);
@@ -306,6 +364,11 @@ function setupWebSocket() {
 
       lastReceivedData = data;
 
+      if (data.type === "meeting_state") {
+        renderMeetingData(data);
+        return;
+      }
+
       const {
         lines = [],
         buffer_transcription = "",
@@ -328,6 +391,68 @@ function setupWebSocket() {
       );
     };
   });
+}
+
+function renderMeetingData(data) {
+  const {
+    participants = [],
+    lines = [],
+    active_buffers = [],
+    status = "active_transcription",
+  } = data;
+
+  renderParticipants(participants);
+  renderActiveBuffers(active_buffers);
+  renderLinesWithBuffer(lines, "", "", "", 0, 0, false, status);
+}
+
+function renderParticipants(participants) {
+  if (!participantsRoster) return;
+
+  if (!participants.length) {
+    participantsRoster.innerHTML = "<div class='participant-meta'>Aún no hay participantes registrados.</div>";
+    return;
+  }
+
+  participantsRoster.innerHTML = participants
+    .map((participant) => {
+      const statusClass = participant.connected ? "participant-status" : "participant-status offline";
+      const statusLabel = participant.connected ? "Conectado" : "Desconectado";
+      return `
+        <div class="participant-card">
+          <div class="participant-card-header">
+            <div class="participant-name">${participant.name}</div>
+            <span class="${statusClass}">${statusLabel}</span>
+          </div>
+          <div class="participant-meta">${participant.role} · ${participant.company}</div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderActiveBuffers(activeBuffers) {
+  if (!activeBuffersDiv) return;
+
+  if (!activeBuffers.length) {
+    activeBuffersDiv.innerHTML = "<div class='participant-meta'>Cuando alguien hable aparecerá aquí en tiempo real.</div>";
+    return;
+  }
+
+  activeBuffersDiv.innerHTML = activeBuffers
+    .map(
+      (buffer) => `
+        <div class="live-buffer-card">
+          <div class="live-buffer-header">
+            <div class="live-buffer-name">${buffer.speaker_name}</div>
+            <div class="speaker-meta">${fmt1(buffer.remaining_time_transcription)}s</div>
+          </div>
+          <div class="live-buffer-meta">${buffer.speaker_role} · ${buffer.speaker_company}</div>
+          <div class="live-buffer-text">${buffer.buffer_transcription || ""}</div>
+        </div>
+      `
+    )
+    .join("");
 }
 
 function renderLinesWithBuffer(
@@ -392,8 +517,13 @@ function renderLinesWithBuffer(
           remaining_time_diarization
         )}</span> second(s) of audio are undergoing diarization</span></span>`;
       } else if (item.speaker !== 0) {
-        const speakerNum = `<span class="speaker-badge">${item.speaker}</span>`;
-        speakerLabel = `<span id="speaker">${speakerIcon}${speakerNum}<span id='timeInfo'>${timeInfo}</span></span>`;
+        if (item.speaker_name) {
+          const meta = [item.speaker_role, item.speaker_company].filter(Boolean).join(" · ");
+          speakerLabel = `<span id="speaker">${speakerIcon}<span class="speaker-identity"><span class="speaker-name">${item.speaker_name}</span><span class="speaker-meta">${meta}</span></span><span id='timeInfo'>${timeInfo}</span></span>`;
+        } else {
+          const speakerNum = `<span class="speaker-badge">${item.speaker}</span>`;
+          speakerLabel = `<span id="speaker">${speakerIcon}${speakerNum}<span id='timeInfo'>${timeInfo}</span></span>`;
+        }
 
         if (item.detected_language) {
           speakerLabel += `<span class="label_language">${languageIcon}<span>${item.detected_language}</span></span>`;
@@ -724,6 +854,9 @@ async function stopRecording() {
 
 async function toggleRecording() {
   if (!isRecording) {
+    if (!validateParticipantConfig()) {
+      return;
+    }
     if (waitingForStop) {
       console.log("Waiting for stop, early return");
       return;
@@ -776,6 +909,8 @@ recordButton.addEventListener("click", toggleRecording);
 if (microphoneSelect) {
   microphoneSelect.addEventListener("change", handleMicrophoneChange);
 }
+renderParticipants([]);
+renderActiveBuffers([]);
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     await enumerateMicrophones();

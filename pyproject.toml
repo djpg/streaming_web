@@ -131,21 +131,23 @@ select = ["E", "F", "W", "I"]
 ignore = ["E501", "E741"]
 per-file-ignores = {"whisperlivekit/whisper/*" = ["F401", "F841", "E731", "W"], "whisperlivekit/simul_whisper/mlx/*" = ["F401", "E731", "W"], "whisperlivekit/simul_whisper/mlx_encoder.py" = ["E731", "F821"], "whisperlivekit/silero_vad_iterator.py" = ["F401"]}
 
-[tool.setuptools]
-packages = [
-    "whisperlivekit",
-    "whisperlivekit.diarization",
-    "whisperlivekit.simul_whisper",
-    "whisperlivekit.simul_whisper.mlx",
-    "whisperlivekit.whisper",
-    "whisperlivekit.whisper.assets",
-    "whisperlivekit.whisper.normalizers",
-    "whisperlivekit.web",
-    "whisperlivekit.local_agreement",
-    "whisperlivekit.voxtral_mlx",
-    "whisperlivekit.silero_vad_models",
-    "whisperlivekit.benchmark",
-]
+# [tool.setuptools]
+# packages = [
+#     "whisperlivekit",
+#     "whisperlivekit.diarization",
+#     "whisperlivekit.simul_whisper",
+#     "whisperlivekit.simul_whisper.mlx",
+#     "whisperlivekit.whisper",
+#     "whisperlivekit.whisper.assets",
+#     "whisperlivekit.whisper.normalizers",
+#     "whisperlivekit.web",
+#     "whisperlivekit.local_agreement",
+#     "whisperlivekit.voxtral_mlx",
+#     "whisperlivekit.silero_vad_models",
+#     "whisperlivekit.benchmark",
+# ]
+[tool.setuptools.packages.find]
+include = ["whisperlivekit*"]
 
 [tool.setuptools.package-data]
 whisperlivekit = ["web/*.html", "web/*.css", "web/*.js", "web/src/*.svg"]

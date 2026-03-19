@@ -244,7 +244,7 @@ function getParticipantConfig() {
 function validateParticipantConfig() {
   const { meetingId, participantName, participantRole, participantCompany } = getParticipantConfig();
   if (!meetingId || !participantName || !participantRole || !participantCompany) {
-    statusText.textContent = "Completa Meeting ID, nombre, rol y empresa antes de grabar.";
+    statusText.textContent = "Please complete Meeting ID, name, role, and company before recording.";
     settingsDiv.classList.add("visible");
     settingsToggle.classList.add("active");
     return false;
